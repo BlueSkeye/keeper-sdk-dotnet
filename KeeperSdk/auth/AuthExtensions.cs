@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using AccountSummary;
 using Authentication;
@@ -33,6 +34,9 @@ namespace KeeperSecurity.Authentication
         public static async Task<KeeperApiResponse> ExecuteAuthCommand(this IAuthentication auth, AuthenticatedCommand command)
         {
             return await auth.ExecuteAuthCommand(command, typeof(KeeperApiResponse), true);
+        }
+
+        public static async Task<KeeperApiResponse> ExecuteBatch(this IAuthentication auth, ICollection<KeeperApiCommand> commands) { 
         }
 
         /// <summary>
