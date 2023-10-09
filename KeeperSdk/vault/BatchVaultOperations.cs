@@ -34,6 +34,9 @@ namespace KeeperSecurity
             Information,
         }
 
+        /// <summary>
+        /// Specifies record match strategy
+        /// </summary>
         public enum RecordMatch
         {
             /// <summary>
@@ -166,6 +169,7 @@ namespace KeeperSecurity
         /// <summary>
         /// Represents Batch Vault Updater
         /// </summary>
+        /// <seealso cref="IBatchVaultOperations"/>
         public class BatchVaultOperations: IBatchVaultOperations
         {
             private readonly VaultOnline _vault;
@@ -1200,10 +1204,10 @@ namespace KeeperSecurity
             /// </summary>
             public int RecordsToUpdate => _recordsToUpdate.Count;
             /// <summary>
-            /// Gets the number od folder to be renamed
+            /// Gets the number of folder to be renamed
             /// </summary>
             /// <returns></returns>
-            public int FoldersToRename() => _folderNameUpdates.Count;
+            public int FoldersToRename => _folderNameUpdates.Count;
         }
     }
 }
