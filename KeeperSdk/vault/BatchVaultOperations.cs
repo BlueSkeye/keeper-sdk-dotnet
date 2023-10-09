@@ -37,7 +37,7 @@ namespace KeeperSecurity
         public enum RecordMatch
         {
             /// <summary>
-            /// Do not match records when added.
+            /// Do not match existing records when added.
             /// </summary>
             None,
             /// <summary>
@@ -75,20 +75,92 @@ namespace KeeperSecurity
             /// Get number of updated records
             /// </summary>
             public int UpdatedRecordCount { get; internal set; }
+            public IDictionary<string, string> FolderFailure { get; } = new Dictionary<string, string>();
+            public IDictionary<string, string> RecordFailure { get; } = new Dictionary<string, string>();
         }
 
+        /// <summary>
+        /// Declares Batch Vault Updater methods
+        /// </summary>
         public interface IBatchVaultOperations
         {
+            /// <summary>
+            /// Gets folder node by folder UID
+            /// </summary>
+            /// <param name="folderUid">folder UID</param>
+            /// <param name="folder">folder node</param>
+            /// <seealso cref="FolderNode"/>
+            /// <returns>true if folder is found</returns>
             bool TryGetFolderByUid(string folderUid, out FolderNode folder);
+            /// <summary>
+            /// Finds folder node by folder path
+            /// </summary>
+            /// <param name="folderPath">Folder Path</param>
+            /// <seealso cref="FolderNode"/>
+            /// <returns>folder node</returns>
             FolderNode GetFolderByPath(string folderPath);
-            FolderNode AddFolder(FolderNode folder, SharedFolderOptions sharedFolderOptions = null);
+            /// <summary>
+            /// Appends folder to folder structure
+            /// </summary>
+            /// <param name="folderName">folder name</param>
+            /// <param name="parentUid">parent folder e</param>
+            /// <param name="sharedFolderOptions">shared folder options</param>
+            /// <returns>folder node to be added</returns>
+            FolderNode AddFolder(string folderName, string parentUid = null, SharedFolderOptions sharedFolderOptions = null);
+            /// <summary>
+            /// Updates folder name
+            /// </summary>
+            /// <param name="folderUid">folder UID</param>
+            /// <param name="folderName">new folder name</param>
+            /// <returns>true is folder is scheduled to be added</returns>
             bool UpdateFolderName(string folderUid, string folderName);
+            /// <summary>
+            /// Update a record
+            /// </summary>
+            /// <param name="record">Keeper record</param>
+            /// <returns>true is record is scheduled to be updated</returns>
             bool UpdateRecord(KeeperRecord record);
+            /// <summary>
+            /// Appends record
+            /// </summary>
+            /// <param name="record">record</param>
+            /// <param name="folder">folder</param>
+            /// <returns>true is record is scheduled to be added</returns>
             bool AddRecord(KeeperRecord record, FolderNode folder);
+            /*
+            /// <summary>
+            /// Adds user or team to a shared folder
+            /// </summary>
+            /// <param name="folder">shared folder</param>
+            /// <param name="accountType">account type: User or Team</param>
+            /// <param name="accountId">Email or Team UID</param>
+            /// <param name="canEdit">Can Edit permission</param>
+            /// <param name="canShare">Can Share permission</param>
+            /// <returns></returns>
+            bool AddAccountToFolder(string folderUid, UserType accountType, string accountId, bool? manageUsers = null, bool? manageRecords = null);
+            */
+            /// <summary>
+            /// Applies pending changes
+            /// </summary>
+            /// <returns>Change status</returns>
             Task<BatchResult> ApplyChanges();
+            /// <summary>
+            /// Resets pending changes
+            /// </summary>
             void Reset();
 
-            RecordMatch RecordMatch { get; set; }
+            /// <summary>
+            /// Gets record matching strategy
+            /// </summary>
+            RecordMatch RecordMatch { get; }
+        }
+
+        class SharedFolderUserPermission
+        {
+            public string UserId { get; set; }
+            public UserType UserType { get; set; }
+            public bool? ManageRecords { get; set; }
+            public bool? ManageUsers { get; set; }
         }
 
         /// <summary>
@@ -114,16 +186,14 @@ namespace KeeperSecurity
             /// Instantiate <see cref="BatchVaultOperations"/>.
             /// </summary>
             /// <param name="vault">Vault instance</param>
-            public BatchVaultOperations(VaultOnline vault)
+            public BatchVaultOperations(VaultOnline vault, RecordMatch recordMatch = RecordMatch.AllFields)
             {
                 _vault = vault;
-                RecordMatch = RecordMatch.AllFields;
+                RecordMatch = recordMatch;
                 Reset();
             }
 
-            /// <summary>
-            /// Resets all pending tasks
-            /// </summary>
+            /// <inheritdoc/>
             public void Reset()
             {
                 _foldersToAdd.Clear();
@@ -338,12 +408,7 @@ namespace KeeperSecurity
                 return CreateFolderPath(path);
             }
 
-            /// <summary>
-            /// Finds folder node by folder path
-            /// </summary>
-            /// <param name="folderPath">Folder Path</param>
-            /// <seealso cref="FolderNode"/>
-            /// <returns>folder node</returns>
+            /// <inheritdoc />
             public FolderNode GetFolderByPath(string folderPath)
             {
                 if (_folderPathLookup.TryGetValue(folderPath.ToLower(), out var folderUid))
@@ -355,13 +420,8 @@ namespace KeeperSecurity
                 }
                 return null;
             }
-
-            /// <summary>
-            /// Gets folder node by folder UID
-            /// </summary>
-            /// <param name="folderUid">folder UID</param>
-            /// <param name="folder">folder node</param>
-            /// <returns>true if folder is found</returns>
+            
+            /// <inheritdoc />
             public bool TryGetFolderByUid(string folderUid, out FolderNode folder)
             {
                 return _folderInfoLookup.TryGetValue(folderUid, out folder);
@@ -430,54 +490,37 @@ namespace KeeperSecurity
                 }
             }
 
-            /// <summary>
-            /// Appends folder to folder structure
-            /// </summary>
-            /// <param name="folder">folder node</param>
-            /// <param name="sharedFolderOptions">shared folder options</param>
-            /// <returns>folder node</returns>
-            public FolderNode AddFolder(FolderNode folder, SharedFolderOptions sharedFolderOptions = null)
+            /// <inheritdoc/>
+            public FolderNode AddFolder(string folderName, string parentUid = null, SharedFolderOptions sharedFolderOptions = null)
             {
-                if (string.IsNullOrEmpty(folder.FolderUid))
+                var f = new FolderNode
                 {
-                    folder.FolderUid = CryptoUtils.GenerateUid();
-                }
-                else
-                {
-                    if (_folderInfoLookup.TryGetValue(folder.FolderUid, out var existingFolder))
-                    {
-                        BatchLogger?.Invoke(Severity.Warning, $"Add Folder {folder.Name}: Folder UID \"{folder.FolderUid}\" already exists");
-                        return existingFolder;
-                    }
-                }
-
+                    FolderUid = CryptoUtils.GenerateUid(),
+                    Name = folderName,
+                    ParentUid = parentUid,
+                    FolderKey = CryptoUtils.GenerateEncryptionKey()
+                };
                 FolderNode parentFolder = null;
-                if (!string.IsNullOrEmpty(folder.ParentUid))
+                if (!string.IsNullOrEmpty(parentUid))
                 {
-                    if (_folderInfoLookup.TryGetValue(folder.ParentUid, out parentFolder))
+                    if (_folderInfoLookup.TryGetValue(parentUid, out parentFolder))
                     {
                         if (sharedFolderOptions != null && parentFolder.FolderType != FolderType.UserFolder)
                         {
-                            BatchLogger?.Invoke(Severity.Warning, $"Add Folder {folder.Name}: Folder cannot be added as a shared folder.");
+                            BatchLogger?.Invoke(Severity.Warning, $"Add Folder {folderName}: Folder cannot be added as a shared folder.");
                             sharedFolderOptions = null;
                         }
                     }
                     else
                     {
-                        BatchLogger?.Invoke(Severity.Error, $"Add Folder {folder.Name}: Parent folder UID \"{folder.ParentUid}\" not found");
+                        BatchLogger?.Invoke(Severity.Error, $"Add Folder {folderName}: Parent folder UID \"{parentUid}\" not found");
                         return null;
                     }
                 }
 
-                var f = new FolderNode
-                {
-                    FolderUid = folder.FolderUid,
-                    Name = folder.Name,
-                    ParentUid = folder.ParentUid,
-                    FolderKey = CryptoUtils.GenerateEncryptionKey()
-                };
                 if (parentFolder != null)
                 {
+                    f.ParentUid = parentFolder.FolderUid;
                     if (sharedFolderOptions != null && parentFolder.FolderType == FolderType.UserFolder)
                     {
                         f.FolderType = FolderType.SharedFolder;
@@ -517,12 +560,7 @@ namespace KeeperSecurity
                 return f;
             }
 
-            /// <summary>
-            /// Updates folder name
-            /// </summary>
-            /// <param name="folderUid">folder UID</param>
-            /// <param name="folderName">new folder name</param>
-            /// <returns>true is folder is updated</returns>
+            /// <inheritdoc/>
             public bool UpdateFolderName(string folderUid, string folderName)
             {
                 if (TryGetFolderByUid(folderUid, out var folder)) {
@@ -543,6 +581,8 @@ namespace KeeperSecurity
                 return false;
             }
 
+
+            /// <inheritdoc/>
             public bool UpdateRecord(KeeperRecord record)
             {
                 if (_vault.TryGetKeeperRecord(record.Uid, out var r))
@@ -568,11 +608,7 @@ namespace KeeperSecurity
                 return true;
             }
 
-            /// <summary>
-            /// Appends record
-            /// </summary>
-            /// <param name="record">record</param>
-            /// <param name="folder">folder</param>
+            /// <inheritdoc/>
             public bool AddRecord(KeeperRecord record, FolderNode folder)
             {
                 var recordHasher = new Sha256Digest();
@@ -669,10 +705,7 @@ namespace KeeperSecurity
                 return true;
             }
 
-            /// <summary>
-            /// Applies pending changes
-            /// </summary>
-            /// <returns>Summary of changes</returns>
+            /// <inheritdoc/>
             public async Task<BatchResult> ApplyChanges()
             {
                 var result = new BatchResult();
@@ -751,7 +784,9 @@ namespace KeeperSecurity
                                 {
                                     if (!_folderInfoLookup.TryGetValue(folder.SharedFolderUid, out var sharedFolder))
                                     {
-                                        BatchLogger?.Invoke(Severity.Warning, $"Prepare Shared Folder Folder {folder.FolderUid}: Parent Shared Folder UID {folder.SharedFolderUid} not found");
+                                        var message = $"Prepare Shared Folder Folder {folder.FolderUid}: Parent Shared Folder UID {folder.SharedFolderUid} not found";
+                                        BatchLogger?.Invoke(Severity.Warning, message);
+                                        result.FolderFailure[folder.FolderUid] = message;
                                         continue;
                                     }
                                     frq.FolderType = Folder.FolderType.SharedFolderFolder;
@@ -807,7 +842,9 @@ namespace KeeperSecurity
                                         rrq.FolderType = Folder.FolderType.SharedFolderFolder;
                                         if (!_folderInfoLookup.TryGetValue(folder.SharedFolderUid, out sharedFolder))
                                         {
-                                            BatchLogger?.Invoke(Severity.Warning, $"Prepare Shared Folder Folder {folder.FolderUid}: Parent Shared Folder UID {folder.SharedFolderUid} not found");
+                                            var message = $"Prepare Shared Folder Folder {folder.FolderUid}: Parent Shared Folder UID {folder.SharedFolderUid} not found";
+                                            BatchLogger?.Invoke(Severity.Warning, message);
+                                            result.FolderFailure[folder.FolderUid] = message;
                                             continue;
                                         }
                                     }
@@ -859,7 +896,10 @@ namespace KeeperSecurity
                         }
                         else
                         {
-                            BatchLogger?.Invoke(Severity.Warning, $"Add folder \"{frs.FolderUid.ToByteArray().Base64UrlEncode()}\" error: {frs.Status}");
+                            var folderUid = frs.FolderUid.ToByteArray().Base64UrlEncode();
+                            var message = $"Add folder \"{folderUid}\" error: {frs.Status}";
+                            BatchLogger?.Invoke(Severity.Warning, message);
+                            result.FolderFailure[folderUid] = message;
                         }
                     }
                     foreach (var rrs in rs.RecordResponse)
@@ -870,7 +910,10 @@ namespace KeeperSecurity
                         }
                         else
                         {
-                            BatchLogger?.Invoke(Severity.Warning, $"Add legacy record \"{rrs.RecordUid.ToByteArray().Base64UrlEncode()}\" error: {rrs.Status}");
+                            var recordUid = rrs.RecordUid.ToByteArray().Base64UrlEncode();
+                            var message = $"Add legacy record \"{recordUid}\" error: {rrs.Status}";
+                            BatchLogger?.Invoke(Severity.Warning, message);
+                            result.RecordFailure[recordUid] = message;
                         }
                     }
                 }
@@ -926,7 +969,9 @@ namespace KeeperSecurity
                                     ra.FolderType = RecordFolderType.SharedFolderFolder;
                                     if (!_folderInfoLookup.TryGetValue(folder.SharedFolderUid, out sharedFolder))
                                     {
-                                        BatchLogger?.Invoke(Severity.Warning, $"Prepare Shared Folder Folder {folder.FolderUid}: Parent Shared Folder UID {folder.SharedFolderUid} not found");
+                                        var message = $"Prepare Shared Folder Folder {folder.FolderUid}: Parent Shared Folder UID {folder.SharedFolderUid} not found";
+                                        BatchLogger?.Invoke(Severity.Warning, message);
+                                        result.RecordFailure[typed.Uid] = message;
                                         continue;
                                     }
                                 }
@@ -971,7 +1016,10 @@ namespace KeeperSecurity
                         }
                         else
                         {
-                            BatchLogger?.Invoke(Severity.Warning, $"Add typed record \"{ar.RecordUid.ToByteArray().Base64UrlEncode()}\" error: {ar.Message}");
+                            var recordUid = ar.RecordUid.ToByteArray().Base64UrlEncode();
+                            var message = $"Add typed record \"{recordUid}\" error: {ar.Message}";
+                            BatchLogger?.Invoke(Severity.Warning, message);
+                            result.RecordFailure[recordUid] = message;
                         }
                     }
                     if (_typedRecordsToAdd.Count > 100)
@@ -1001,6 +1049,7 @@ namespace KeeperSecurity
                             else {
                                 BatchLogger?.Invoke(Severity.Warning, $"Update record UID \"{recordUid}\" error: {status.Message}");
                             }
+                            result.RecordFailure[recordUid] = $"Update record UID \"{recordUid}\" error: {status.Message}";
                         }
                         else 
                         {
@@ -1011,7 +1060,7 @@ namespace KeeperSecurity
 
                 if (_folderNameUpdates.Count > 0)
                 {
-                    var folderUpdateRequests = new List<FolderUpdateCommand>();
+                    var folderUpdateRequests = new List<KeeperApiCommand>();
                     foreach (var folderUid in _folderNameUpdates.Keys)
                     {
                         if (TryGetFolderByUid(folderUid, out var folder))
@@ -1063,23 +1112,72 @@ namespace KeeperSecurity
                     }
                     if (folderUpdateRequests.Count > 0) 
                     {
-                        var execRs = await _vault.Auth.ExecuteAuthCommand<ExecuteCommand, ExecuteResponse>(execRq);
-                        if (execRs.Results?.Count > 0)
+                        var updateResults = await _vault.Auth.ExecuteBatch(folderUpdateRequests);
+                        if (updateResults?.Count > 0)
                         {
-                            var last = execRs.Results.Last();
-                            var success = execRs.Results.Count + (last.IsSuccess ? 0 : -1);
-                            warnings?.Invoke($"Successfully added {success} team membership(s)");
-                            if (!last.IsSuccess) warnings?.Invoke(last.message);
+                            for (int i = 0; i < updateResults.Count; i++) 
+                            {
+                                var rs = updateResults[i];
+                                var rq = folderUpdateRequests[i];
+                                if (!rs.IsSuccess) 
+                                {
+                                    if (rq is FolderUpdateCommand fuc)
+                                    {
+                                        var message = $"Rename foler \"{fuc.FolderUid}\" error: {rs.message}";
+                                        BatchLogger?.Invoke(Severity.Warning, message);
+                                        result.FolderFailure[fuc.FolderUid] = message;
+                                    }
+                                    else 
+                                    {
+                                        BatchLogger?.Invoke(Severity.Warning, rs.message);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
 
-                Reset();
                 await _vault.ScheduleSyncDown(TimeSpan.FromSeconds(0));
+                Reset();
                 return result;
             }
 
-            public RecordMatch RecordMatch { get; set; }
+            /*
+            /// <inheritdoc/>
+            public bool AddAccountToFolder(string folderUid, UserType accountType, string accountId, bool? manageUsers = null, bool? manageRecords = null) 
+            {
+                if (TryGetFolderByUid(folderUid, out var folder))
+                {
+                    if (folder.FolderType == FolderType.SharedFolder)
+                    {
+                        if (!_sharedFolderPermissions.TryGetValue(folderUid, out var permissions))
+                        {
+                            permissions = new List<SharedFolderUserPermission>();
+                            _sharedFolderPermissions.Add(folderUid, permissions);
+                        }
+                        permissions.Add(new SharedFolderUserPermission
+                        {
+                            UserId = accountId,
+                            UserType = accountType,
+                            ManageUsers = manageUsers,
+                            ManageRecords = manageRecords,
+                        });
+                        return true;
+                    }
+                    else
+                    {
+                        BatchLogger?.Invoke(Severity.Warning, $"Folder \"{folderUid}\" is not a shared folder");
+                    }
+                }
+                else 
+                {
+                    BatchLogger?.Invoke(Severity.Warning, $"Folder \"{folderUid}\" is not found");
+                }
+                return false;
+            }
+            */
+            /// <inheritdoc/>
+            public RecordMatch RecordMatch { get; }
 
             /// <summary>
             /// Gets or sets logger
@@ -1101,6 +1199,11 @@ namespace KeeperSecurity
             /// Gets number of typed records to be updated
             /// </summary>
             public int RecordsToUpdate => _recordsToUpdate.Count;
+            /// <summary>
+            /// Gets the number od folder to be renamed
+            /// </summary>
+            /// <returns></returns>
+            public int FoldersToRename() => _folderNameUpdates.Count;
         }
     }
 }
