@@ -341,7 +341,7 @@ namespace KeeperSecurity.Authentication
                     request.Proxy = WebProxy;
                 }
 
-                request.UserAgent = "KeeperSDK.Net/" + ClientVersion;
+                request.Headers["User-Agent"] = "KeeperSDK.Net/" + ClientVersion;
                 request.ContentType = "application/octet-stream";
                 request.Method = "POST";
 
