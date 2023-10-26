@@ -4,7 +4,7 @@ using System.Linq;
 using KeeperSecurity.Vault;
 
 namespace KeeperSecurity.Utils
-{
+{ 
     /// <summary>
     /// Provides extension methods for Vault Record Types
     /// </summary>

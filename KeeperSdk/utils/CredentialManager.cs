@@ -8,7 +8,7 @@ using Microsoft.Win32.SafeHandles;
 #endif
 
 namespace KeeperSecurity.Utils
-{
+{ 
     /// <exclude />
     public static class CredentialManager
     {

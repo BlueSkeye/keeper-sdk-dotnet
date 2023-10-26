@@ -13,36 +13,6 @@ using KeeperSecurity.Utils;
 
 namespace KeeperSecurity.Vault
 {
-    /// <summary>
-    /// Represents shared folder record permissions.
-    /// </summary>
-    public class SharedFolderRecordOptions : ISharedFolderRecordOptions
-    {
-        public bool? CanEdit { get; set; }
-        public bool? CanShare { get; set; }
-    }
-
-    /// <summary>
-    /// Defines shared folder user permissions.
-    /// </summary>
-
-    public class SharedFolderUserOptions : ISharedFolderUserOptions
-    {
-        public bool? ManageRecords { get; set; }
-        public bool? ManageUsers { get; set; }
-    }
-
-    /// <summary>
-    ///  Defines shared folder user and record permissions.
-    /// </summary>
-    public class SharedFolderOptions : ISharedFolderRecordOptions, ISharedFolderUserOptions
-    {
-        public bool? CanEdit { get; set; }
-        public bool? CanShare { get; set; }
-        public bool? ManageUsers { get; set; }
-        public bool? ManageRecords { get; set; }
-    }
-
     internal static class VaultOnlineFunctions
     {
         public static async Task<KeeperRecord> AddRecordToFolder(this VaultOnline vault, KeeperRecord record,

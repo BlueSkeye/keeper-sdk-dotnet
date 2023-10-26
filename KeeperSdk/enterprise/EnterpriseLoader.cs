@@ -9,13 +9,6 @@ using System.Threading.Tasks;
 
 namespace KeeperSecurity.Enterprise
 {
-    /// <exclude/>
-    public abstract class EnterpriseDataPlugin
-    {
-        public IEnterpriseLoader Enterprise { get; internal set; }
-        public abstract IEnumerable<IKeeperEnterpriseEntity> Entities { get; }
-    }
-
     /// <summary>
     /// Represents Keeper Enterprise connection that incrementally loads requested enterprrise data.
     /// </summary>

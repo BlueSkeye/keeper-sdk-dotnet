@@ -9,7 +9,7 @@ using KeeperSecurity.Commands;
 using KeeperSecurity.Utils;
 
 namespace KeeperSecurity.Vault
-{
+{ 
     /// <exclude/>
     public static class VaultExtensions
     {
@@ -105,7 +105,7 @@ namespace KeeperSecurity.Vault
         }
 
 
-        internal static RecordData ExtractRecordData(this PasswordRecord record)
+        public static RecordData ExtractRecordData(this PasswordRecord record)
         {
             return new RecordData
             {

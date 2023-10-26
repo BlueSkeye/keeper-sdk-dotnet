@@ -12,7 +12,6 @@ namespace KeeperSecurity.Enterprise
     /// <exclude />
     public static class EnterpriseUtils
     {
-
         public static string EncryptEncryptedData(EncryptedData encryptedData, byte[] encryptionKey)
         {
             return CryptoUtils.EncryptAesV1(JsonUtils.DumpJson(encryptedData), encryptionKey).Base64UrlEncode();

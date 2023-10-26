@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace KeeperSecurity.Vault
-{
+{ 
     /// <exclude/>
     public static class VaultDataExtensions
     {

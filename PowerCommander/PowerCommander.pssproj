@@ -9,9 +9,9 @@
     <Name>PowerCommander</Name>
     <PackageEntryPoint>PowerCommander.tests.ps1</PackageEntryPoint>
     <DotNetVersion>net462</DotNetVersion>
+    <PowerShellVersion>Windows PowerShell</PowerShellVersion>
     <PackageType>Console</PackageType>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
-    <PowerShellVersion>Windows PowerShell</PowerShellVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -52,7 +52,9 @@
   <ItemGroup>
     <Reference Include="KeeperSdk, Version=0.9.7.14, Culture=neutral, PublicKeyToken=null">
       <Name>KeeperSdk</Name>
+	  <!--
       <AssemblyName>KeeperSdk.dll</AssemblyName>
+	  -->
       <HintPath>KeeperSdk.dll</HintPath>
       <Private>False</Private>
     </Reference>

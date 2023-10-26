@@ -9,6 +9,7 @@ namespace KeeperSecurity.Enterprise
     public class DeviceApprovalData : EnterpriseDataPlugin
     {
         private readonly DeviceApprovalList _deviceApprovals;
+
         public DeviceApprovalData()
         {
             _deviceApprovals = new DeviceApprovalList();
@@ -21,23 +22,5 @@ namespace KeeperSecurity.Enterprise
         /// Gets a list of all pending device approvals.
         /// </summary>
         public IEnumerable<DeviceRequestForAdminApproval> DeviceApprovalRequests => _deviceApprovals.Entities;
-    }
-
-    /// <exclude />
-    public class DeviceApprovalList : EnterpriseDataList<DeviceRequestForAdminApproval, DeviceRequestForAdminApproval>
-    {
-        public DeviceApprovalList() : base(EnterpriseDataEntity.DevicesRequestForAdminApproval)
-        {
-        }
-
-        protected override DeviceRequestForAdminApproval CreateFromKeeperEntity(DeviceRequestForAdminApproval keeperEntity)
-        {
-            return keeperEntity;
-        }
-
-        protected override bool MatchByKeeperEntity(DeviceRequestForAdminApproval sdkEntity, DeviceRequestForAdminApproval keeperEntity)
-        {
-            return sdkEntity.EnterpriseUserId == keeperEntity.EnterpriseUserId && sdkEntity.DeviceId == keeperEntity.DeviceId;
-        }
     }
 }
