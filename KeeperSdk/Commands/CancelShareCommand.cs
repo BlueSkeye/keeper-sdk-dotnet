@@ -5,7 +5,8 @@ namespace KeeperSecurity.Commands
     [DataContract]
     internal class CancelShareCommand : AuthenticatedCommand
     {
-        public CancelShareCommand() : base("cancel_share")
+        public CancelShareCommand()
+            : base("cancel_share")
         {
         }
 

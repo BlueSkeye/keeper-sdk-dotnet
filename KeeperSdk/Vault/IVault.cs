@@ -107,6 +107,7 @@ namespace KeeperSecurity.Vault
         /// <returns>A task returning renamed folder.</returns>
         /// <exception cref="Authentication.KeeperApiException"></exception>
         Task<FolderNode> UpdateFolder(string folderUid, string newName, SharedFolderOptions sharedFolderOptions = null);
+        
         /// <summary>
         /// Moves a folder to the another folder.
         /// </summary>
